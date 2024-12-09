@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
- * Copyright (C) 2024 Radxa Technology Co., Ltd.
+ * Copyright (C) 2024 Radxa Computer (Shenzhen) Co., Ltd.
  */
 
 #include <common.h>
@@ -11,7 +11,11 @@
 #include <radxa-i2c-eeprom.h>
 #include <linux/ctype.h>
 #include <linux/delay.h>
-
+#include <common.h>
+#include <dm.h>
+#include <i2c.h>
+#include <log.h>
+#include <errno.h>
 
 struct eeprom_hats_header {
 	char signature[MAGIC_NUMBER_BYTES];	/* ASCII table signature */
@@ -42,7 +46,6 @@ struct eeprom_atom1_data {
 
 	char vstr[CONFIG_EEPROM_ATOM1_VSTR_SIZE];
 	char pstr[CONFIG_EEPROM_ATOM1_PSTR_SIZE]; /* product SN */
-
 };
 
 struct eeprom_atom1 {
@@ -74,7 +77,6 @@ struct eeprom_atom5 {
 	u16 crc16;
 };
 
-
 /* Set to 1 if we've read EEPROM into memory
  * Set to -1 if EEPROM data is wrong
  */
@@ -101,7 +103,6 @@ struct eeprom_info_page2 {
 };
 static struct eeprom_info_page2 einfo_page2;
 
-
 static uchar eeprom_buff[CONFIG_EEPROM_HATS_SIZE_MAX];
 
 /**
@@ -125,7 +126,7 @@ static inline int is_match_magic(char *hats)
 
 ulong hextoul(const char *cp, char **endp)
 {
-        return simple_strtoul(cp, endp, 16);
+	return simple_strtoul(cp, endp, 16);
 }
 
 #define CRC16 0x8005
@@ -218,7 +219,6 @@ static int hats_atom_crc_check(struct eeprom_hats_atom_header *atom)
 		atom->count, atom->type, atom_crc, data_crc);
 
 	return -1;
-
 }
 
 static void *hats_get_atom(struct eeprom_hats_header *header, u16 type)
@@ -253,26 +253,26 @@ static void *hats_get_atom(struct eeprom_hats_header *header, u16 type)
  */
 static void show_eeprom(void)
 {
-    printf("\n--------EEPROM INFO--------\n");
-    printf("Vendor: %s\n", einfo_page1.vstr);
-    printf("Product full SN: %s\n", einfo_page1.pstr);
-    printf("Data version: 0x%x\n", *einfo_page1.version);
+	printf("\n--------EEPROM INFO--------\n");
+	printf("Vendor: %s\n", einfo_page1.vstr);
+	printf("Product full SN: %s\n", einfo_page1.pstr);
+	printf("Data version: 0x%x\n", *einfo_page1.version);
 
-    if (*einfo_page1.version == 1) {
-        printf("BOM revision: %s\n", einfo_page1.bom_revision);
+	if (*einfo_page1.version == 1) {
+    	printf("BOM revision: %s\n", einfo_page1.bom_revision);
 
-        for (int i = 0; i < 10; i++) {
-            int idx = i * 6;
-            printf("Ethernet%d MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", i,
-                   einfo_page2.mac_addr[idx], einfo_page2.mac_addr[idx + 1], 
-                   einfo_page2.mac_addr[idx + 2], einfo_page2.mac_addr[idx + 3], 
-                   einfo_page2.mac_addr[idx + 4], einfo_page2.mac_addr[idx + 5]);
-        }
-    } else {
-        printf("Custom data v%d is not supported\n", *einfo_page1.version);
-    }
+		for (int i = 0; i < 10; i++) {
+			int idx = i * 6;
+			printf("Ethernet%d MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", i,
+				einfo_page2.mac_addr[idx], einfo_page2.mac_addr[idx + 1], 
+				einfo_page2.mac_addr[idx + 2], einfo_page2.mac_addr[idx + 3], 
+				einfo_page2.mac_addr[idx + 4], einfo_page2.mac_addr[idx + 5]);
+			}
+	} else {
+    	printf("Custom data v%d is not supported\n", *einfo_page1.version);
+	}
     
-    printf("--------EEPROM INFO--------\n\n");
+	printf("--------EEPROM INFO--------\n\n");
 }
 
 /**
@@ -375,36 +375,25 @@ error:
  * 			CONFIG_EEPROM_HATS_SIZE_MAX
  */
 
-#include <common.h>
-#include <dm.h>
-#include <i2c.h>
-#include <log.h>
-#include <errno.h>
-
-
 #define COMPATIBLE_STR "i2c-eeprom"
-
 
 int find_i2c_bus_by_compatible(const char *compatible, struct udevice **bus)
 {
-    struct udevice *dev;
+	struct udevice *dev;
 
-    // 遍历所有 I2C 总线设备
-    for (uclass_first_device(UCLASS_I2C, &dev);
-         dev;
-         uclass_next_device(&dev)) {
+	for (uclass_first_device(UCLASS_I2C, &dev);
+		dev;
+		uclass_next_device(&dev)) {
 	
-	printf("Checking device: %s\n", dev_read_name(dev));
-        // 检查设备的 compatible 字段
-        if (device_is_compatible(dev, compatible)) {
+		printf("Checking device: %s\n", dev_read_name(dev));
+		if (device_is_compatible(dev, compatible)) {
 		printf("Found compatible device: %s\n", dev_read_name(dev));
-            *bus = dev;
-            return dev->seq;
-        }
-    }
+			*bus = dev;
+			return dev->seq;
+		}
+	}
 	printf("fail to get i2c device.\n");
-    // 没有找到匹配的设备
-    return -ENODEV;
+	return -ENODEV;
 }
 
 
@@ -421,9 +410,9 @@ static int read_eeprom(uint8_t *buf)
 	
 	printf("!!!! i2c_bus_num: %d\n", i2c_bus_num);
 	ret = i2c_get_chip_for_busnum(i2c_bus_num,
-	 			CONFIG_SYS_I2C_EEPROM_ADDR,
-	 			CONFIG_SYS_I2C_EEPROM_ADDR_LEN,
-	 			&dev);
+				CONFIG_SYS_I2C_EEPROM_ADDR,
+				CONFIG_SYS_I2C_EEPROM_ADDR_LEN,
+					&dev);
 
 	printf("!!!! i2c_get_chip_for_busnum device: %s\n", dev_read_name(dev));
 
@@ -438,7 +427,6 @@ static int read_eeprom(uint8_t *buf)
 	}
 
 	return parse_eeprom_info((struct eeprom_hats_header *)buf);
-
 }
 
 static int set_mac_address_env(u8 *mac_addr)
@@ -478,9 +466,6 @@ static int set_mac_address_env(u8 *mac_addr)
 	}
 	return 0;
 }
-
-
-
 
 /**
  * radxa_mac_read_from_eeprom() - read the MAC address & the serial number in EEPROM
