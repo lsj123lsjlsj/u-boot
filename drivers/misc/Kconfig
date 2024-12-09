@@ -59,7 +59,7 @@ config ATSHA204A
 	   board.
 
 config ROCKCHIP_EFUSE
-	 bool "Rockchip e-fuse support"
+	bool "Rockchip e-fuse support"
 	depends on MISC
 	help
 	  Enable (read-only) access for the e-fuse block found in Rockchip
